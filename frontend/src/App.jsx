@@ -5,9 +5,9 @@ function App() {
 
 
   return (
-    <>
-   <Game/>
-    </>
+<main className='app'>
+  <Game/>
+</main>
   )
 }
 

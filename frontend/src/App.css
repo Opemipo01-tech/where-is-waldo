@@ -7,15 +7,15 @@ body {
   font-family: Arial, sans-serif;
 }
 
-/* .app {
+.app {
   min-height: 100vh;
   padding: 20px;
   border: 1px solid black;
-} */
+}
 
 .game {
   width: 100%;
-  max-width: 768px;
+  max-width: 870px;
   margin: 0 auto;
 }
 
@@ -31,7 +31,7 @@ body {
 .game-image {
   display: block;
   width: 100%;
-  max-width: 768px;
+  max-width: 1024px;
   height: auto;
 }
 
