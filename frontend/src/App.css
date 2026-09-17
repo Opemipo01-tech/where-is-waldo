@@ -10,7 +10,6 @@ body {
 .app {
   min-height: 100vh;
   padding: 20px;
-  border: 1px solid black;
 }
 
 .game {
@@ -25,6 +24,7 @@ body {
 }
 
 .image-container {
+  position: relative;
   width: 100%;
 }
 
@@ -33,5 +33,48 @@ body {
   width: 100%;
   max-width: 1024px;
   height: auto;
+  margin: 0 auto;
+  cursor: crosshair;
 }
+
+.target-box {
+  position: absolute;
+
+  border: 1px solid rgb(230, 220, 220);
+  border-radius: 10%;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+
+  padding: 8px;
+
+  background-color: white;
+}
+
+.target-box button {
+  padding: 6px 10px;
+  border: 1px solid #ccc;
+  background-color: white;
+  border-radius: 5px;
+  cursor: pointer;
+
+}
+
+.target-box button:hover {
+  background-color: #eee;
+}
+
+
+.cancel-button {
+  color: red;
+  font-size: 12px;
+}
+
+.cancel-button:hover {
+  color: #be0f0f;
+  text-decoration: underline;
+} 
+
 
