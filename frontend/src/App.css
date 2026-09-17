@@ -1,0 +1,37 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+}
+
+/* .app {
+  min-height: 100vh;
+  padding: 20px;
+  border: 1px solid black;
+} */
+
+.game {
+  width: 100%;
+  max-width: 768px;
+  margin: 0 auto;
+}
+
+.game h1 {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.image-container {
+  width: 100%;
+}
+
+.game-image {
+  display: block;
+  width: 100%;
+  max-width: 768px;
+  height: auto;
+}
+
