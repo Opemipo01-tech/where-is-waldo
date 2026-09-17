@@ -77,4 +77,82 @@ body {
   text-decoration: underline;
 } 
 
+/* =========================
+   Target Box
+   ========================= */
+
+.target-box button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+
+/* =========================
+   Found Characters
+   ========================= */
+
+.found-characters {
+  text-align: center;
+  margin-top: 20px;
+}
+
+.found-characters p {
+  font-weight: bold;
+}
+
+.found-characters ul {
+  list-style: none;
+  padding: 0;
+}
+
+
+/* =========================
+   Character Markers
+   ========================= */
+
+.character-marker {
+  position: absolute;
+  padding: 6px 10px;
+  background-color: white;
+  border: 2px solid green;
+  font-weight: bold;
+  pointer-events: none;
+}
+
+
+/*
+  These positions are temporary.
+  We're only proving that the marker appears
+  when a character is found.
+
+  Later, the markers will use the character's
+  actual coordinates.
+*/
+
+.character-marker.waldo {
+  top: 100px;
+  left: 100px;
+}
+
+.character-marker.wizard {
+  top: 250px;
+  left: 300px;
+}
+
+.character-marker.odlaw {
+  top: 400px;
+  left: 200px;
+}
+
+
+/* =========================
+   Game Complete
+   ========================= */
+
+.game-complete {
+  text-align: center;
+  margin-top: 20px;
+}
+
+
 
