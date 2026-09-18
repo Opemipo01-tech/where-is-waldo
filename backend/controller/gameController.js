@@ -29,7 +29,7 @@ export async function submitGuess(req, res) {
         name: character,
       },
     });
-
+  
     if (!foundCharacter) {
       return res.status(404).json({
         error: "Character not found",
@@ -56,3 +56,52 @@ export async function submitGuess(req, res) {
   }
 }
 
+export async function completeGame(req, res) {
+  try {
+    const { id } = req.params;
+
+    const game = await prisma.game.findUnique({
+      where: {
+        id,
+      },
+    });
+
+    if (!game) {
+      return res.status(404).json({
+        error: "Game not found",
+      });
+    }
+
+    if (game.completedAt) {
+      return res.status(400).json({
+        error: "Game has already been completed",
+      });
+    }
+
+    const completedAt = new Date();
+
+    const updatedGame = await prisma.game.update({
+      where: {
+        id,
+      },
+      data: {
+        completedAt,
+      },
+    });
+
+    const time = completedAt.getTime() - game.startedAt.getTime();
+
+    res.status(200).json({
+      id: updatedGame.id,
+      startedAt: updatedGame.startedAt,
+      completedAt: updatedGame.completedAt,
+      time,
+    });
+  } catch (error) {
+    console.error("Error completing game:", error);
+
+    res.status(500).json({
+      error: "Failed to complete game",
+    });
+  }
+}
