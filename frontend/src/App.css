@@ -23,8 +23,18 @@ body {
   margin-bottom: 20px;
 }
 
+
+/* =========================
+   Image Container
+   ========================= */
+
 .image-container {
+  width: 100%;
+}
+
+.image-wrapper {
   position: relative;
+  display: inline-block;
   width: 100%;
 }
 
@@ -37,8 +47,16 @@ body {
   cursor: crosshair;
 }
 
+
+/* =========================
+   Target Box
+   ========================= */
+
 .target-box {
   position: absolute;
+
+  width: 120px;
+  height: 120px;
 
   border: 1px solid rgb(230, 220, 220);
   border-radius: 10%;
@@ -55,17 +73,27 @@ body {
 
 .target-box button {
   padding: 6px 10px;
+
   border: 1px solid #ccc;
   background-color: white;
   border-radius: 5px;
-  cursor: pointer;
 
+  cursor: pointer;
 }
 
 .target-box button:hover {
   background-color: #eee;
 }
 
+.target-box button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+
+/* =========================
+   Cancel Button
+   ========================= */
 
 .cancel-button {
   color: red;
@@ -75,15 +103,39 @@ body {
 .cancel-button:hover {
   color: #be0f0f;
   text-decoration: underline;
-} 
+}
+
 
 /* =========================
-   Target Box
+   Correct Character Markers
    ========================= */
 
-.target-box button:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
+.correct-marker {
+  position: absolute;
+
+  width: 55px;
+  height: 55px;
+
+  border: 3px solid green;
+  border-radius: 50%;
+
+  background-color: rgba(0, 255, 0, 0.2);
+
+  transform: translate(-50%, -50%);
+
+  pointer-events: none;
+
+  box-sizing: border-box;
+}
+
+
+/* =========================
+   Game Message
+   ========================= */
+
+.game-message {
+  text-align: center;
+  margin-top: 15px;
 }
 
 
@@ -107,45 +159,6 @@ body {
 
 
 /* =========================
-   Character Markers
-   ========================= */
-
-.character-marker {
-  position: absolute;
-  padding: 6px 10px;
-  background-color: white;
-  border: 2px solid green;
-  font-weight: bold;
-  pointer-events: none;
-}
-
-
-/*
-  These positions are temporary.
-  We're only proving that the marker appears
-  when a character is found.
-
-  Later, the markers will use the character's
-  actual coordinates.
-*/
-
-.character-marker.waldo {
-  top: 100px;
-  left: 100px;
-}
-
-.character-marker.wizard {
-  top: 250px;
-  left: 300px;
-}
-
-.character-marker.odlaw {
-  top: 400px;
-  left: 200px;
-}
-
-
-/* =========================
    Game Complete
    ========================= */
 
@@ -153,6 +166,4 @@ body {
   text-align: center;
   margin-top: 20px;
 }
-
-
 

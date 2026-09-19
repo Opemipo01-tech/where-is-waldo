@@ -1,164 +1,205 @@
 import { useRef, useState } from "react";
-import beachImg from "../assets/waldo.png";
+import beachImage from "../assets/waldo.png";
+import {
+  submitGuess,
+  completeGame,
+} from "../services/gameApi";
 
-function GameImage() {
+function GameImage({ gameId }) {
   const imageRef = useRef(null);
 
   const [targetBox, setTargetBox] = useState(null);
   const [foundCharacters, setFoundCharacters] = useState([]);
+  const [markers, setMarkers] = useState([]);
   const [message, setMessage] = useState("");
+  const [submittingGuess, setSubmittingGuess] = useState(false);
   const [gameComplete, setGameComplete] = useState(false);
+  const [completionTime, setCompletionTime] = useState(null);
 
   const characters = ["Waldo", "Wizard", "Odlaw"];
 
   function handleImageClick(event) {
-    // Don't allow more clicks after the game is complete
+    // Do not allow clicks after the game is complete
     if (gameComplete) {
       return;
     }
 
-    const image = imageRef.current;
+    // Do not allow a new target while a guess is being submitted
+    if (submittingGuess) {
+      return;
+    }
 
+    const image = imageRef.current;
     const rect = image.getBoundingClientRect();
 
-    // Calculate click position relative to the displayed image
+    // Coordinates relative to the displayed image
     const clickX = event.clientX - rect.left;
     const clickY = event.clientY - rect.top;
-
-    console.log("Displayed coordinates:");
-    console.log("x:", clickX);
-    console.log("y:", clickY);
 
     // Original image dimensions
     const originalWidth = 1024;
     const originalHeight = 768;
 
-    // Calculate the scale between displayed image and original image
+    // Convert displayed coordinates to original image coordinates
     const scaleX = originalWidth / rect.width;
     const scaleY = originalHeight / rect.height;
 
-    // Convert displayed coordinates to original image coordinates
     const originalX = clickX * scaleX;
     const originalY = clickY * scaleY;
-
-    console.log("Original image coordinates:");
-    console.log("x:", originalX);
-    console.log("y:", originalY);
 
     // Targeting box size
     const boxSize = 120;
 
-    // Put the box's top-left corner around the click
+    // Keep targeting box inside the displayed image
     let boxX = clickX - boxSize / 2;
     let boxY = clickY - boxSize / 2;
 
-    // Prevent the box from going outside the image
-    boxX = Math.max(0, Math.min(boxX, rect.width - boxSize));
-    boxY = Math.max(0, Math.min(boxY, rect.height - boxSize));
+    boxX = Math.max(
+      0,
+      Math.min(boxX, rect.width - boxSize)
+    );
+
+    boxY = Math.max(
+      0,
+      Math.min(boxY, rect.height - boxSize)
+    );
 
     setTargetBox({
       x: boxX,
       y: boxY,
+      originalX,
+      originalY,
     });
 
-    // Remove previous message when the player clicks again
     setMessage("");
   }
 
-  function handleCharacterSelect(character) {
-    console.log("Selected character:", character);
+  async function handleCharacterSelect(character) {
+    if (!targetBox || submittingGuess || gameComplete) {
+      return;
+    }
 
-    // Remove the targeting box
-    setTargetBox(null);
-
-    // Don't allow selecting a character that has already been found
+    // Prevent selecting a character that has already been found
     if (foundCharacters.includes(character)) {
       setMessage(`${character} has already been found.`);
+      setTargetBox(null);
       return;
     }
 
-    /*
-      TEMPORARY FAKE VALIDATION
+    try {
+      setSubmittingGuess(true);
 
-      For now, we are pretending that:
+      const result = await submitGuess(
+        gameId,
+        character,
+        targetBox.originalX,
+        targetBox.originalY
+      );
 
-      Waldo  -> correct
-      Wizard -> correct
-      Odlaw  -> wrong
+      // Remove targeting box
+      setTargetBox(null);
 
-      This is ONLY for testing the frontend.
+      if (result.correct) {
+        // Add character to found characters
+        setFoundCharacters((current) => {
+          if (current.includes(character)) {
+            return current;
+          }
 
-      Later, the backend will decide whether
-      the character was actually clicked.
-    */
+          return [...current, character];
+        });
 
-    const fakeValidation = {
-      Waldo: true,
-      Wizard: true,
-      Odlaw: true,
-    };
+        // Add marker only if this character does not already have one
+        setMarkers((current) => {
+          const alreadyMarked = current.some(
+            (marker) => marker.character === character
+          );
 
-    const isCorrect = fakeValidation[character];
+          if (alreadyMarked) {
+            return current;
+          }
 
-    if (!isCorrect) {
-      setMessage(`Wrong! You did not find ${character}.`);
-      return;
-    }
+          return [
+            ...current,
+            {
+              character,
+              originalX: targetBox.originalX,
+              originalY: targetBox.originalY,
+            },
+          ];
+        });
 
-    // Character was correctly found
-    setFoundCharacters((currentCharacters) => {
-      const updatedCharacters = [...currentCharacters, character];
+        // Calculate what the new number of found characters will be
+        const newFoundCount = foundCharacters.length + 1;
 
-      // Check whether all characters have been found
-      if (updatedCharacters.length === characters.length) {
-        setGameComplete(true);
-        setMessage("🎉 You found all the characters!");
+        if (newFoundCount === characters.length) {
+          try {
+            // Tell the backend that the game is complete
+            const completedGame = await completeGame(gameId);
+
+            setGameComplete(true);
+            setCompletionTime(completedGame.time);
+            setMessage("✓ You found everyone!");
+          } catch (error) {
+            console.error(
+              "Failed to complete game:",
+              error
+            );
+
+            setMessage(
+              "All characters found, but we couldn't complete the game."
+            );
+          }
+        } else {
+          setMessage(`✓ ${character} found!`);
+        }
       } else {
-        setMessage(`Correct! You found ${character}.`);
+        setMessage("✗ Wrong character/location");
       }
+    } catch (error) {
+      console.error(
+        "Failed to submit guess:",
+        error
+      );
 
-      return updatedCharacters;
-    });
-  }
-
-  function handleCancel() {
-    setTargetBox(null);
-    setMessage("");
+      setTargetBox(null);
+      setMessage(
+        "Something went wrong. Please try again."
+      );
+    } finally {
+      setSubmittingGuess(false);
+    }
   }
 
   return (
-    <div className="game-container">
+    <div className="image-container">
 
-      {/* Game feedback message */}
-      {message && (
-        <p className="game-message">
-          {message}
-        </p>
-      )}
+      {/* Image area */}
+      <div className="image-wrapper">
 
-      <div className="image-container">
-
-        {/* Game image */}
         <img
           ref={imageRef}
-          src={beachImg}
+          src={beachImage}
           alt="Where's Waldo game"
           className="game-image"
           onClick={handleImageClick}
         />
 
-        {/* Display markers for characters that have been found */}
-        {foundCharacters.map((character) => (
+        {/* Successful guess markers */}
+        {markers.map((marker) => (
           <div
-            key={character}
-            className={`character-marker ${character.toLowerCase()}`}
-          >
-            ✓ {character}
-          </div>
+            key={marker.character}
+            className="correct-marker"
+            style={{
+              left: `${(marker.originalX / 1024) * 100}%`,
+              top: `${(marker.originalY / 768) * 100}%`,
+            }}
+            title={`${marker.character} found`}
+          />
         ))}
 
-        {/* Display targeting box */}
-        {targetBox && !gameComplete && (
+        {/* Targeting box */}
+        {targetBox && (
           <div
             className="target-box"
             style={{
@@ -166,50 +207,47 @@ function GameImage() {
               top: `${targetBox.y}px`,
             }}
           >
-            {/* Character selection buttons */}
             {characters.map((character) => (
               <button
                 key={character}
-                onClick={() => handleCharacterSelect(character)}
-                disabled={foundCharacters.includes(character)}
+                onClick={() =>
+                  handleCharacterSelect(character)
+                }
+                disabled={submittingGuess}
               >
                 {character}
               </button>
             ))}
-
-            {/* Cancel button */}
-            <button
-              className="cancel-button"
-              onClick={handleCancel}
-            >
-              Cancel
-            </button>
           </div>
         )}
       </div>
 
+      {/* Game message */}
+      {message && (
+        <p className="game-message">
+          {message}
+        </p>
+      )}
+
       {/* Found characters */}
       <div className="found-characters">
         <p>
-          Found: {foundCharacters.length} / {characters.length}
+          Found: {foundCharacters.length} /{" "}
+          {characters.length}
         </p>
-
-        {foundCharacters.length > 0 && (
-          <ul>
-            {foundCharacters.map((character) => (
-              <li key={character}>
-                {character}
-              </li>
-            ))}
-          </ul>
-        )}
       </div>
 
-      {/* Game complete message */}
+      {/* Completion information */}
       {gameComplete && (
         <div className="game-complete">
           <h2>Game Complete!</h2>
-          <p>You found all the characters.</p>
+
+          {completionTime !== null && (
+            <p>
+              Your time:{" "}
+              {(completionTime / 1000).toFixed(2)} seconds
+            </p>
+          )}
         </div>
       )}
     </div>
@@ -217,29 +255,3 @@ function GameImage() {
 }
 
 export default GameImage;
-
-
-
-
-
-        // const clickX = event.clientX - rect.left; 
-        // const clickY = event.clientY - rect.top; 
-
-        // console.log("Displayed coordinates:"); 
-        // console.log("x:", clickX); 
-        // console.log("y:", clickY);
-
-
-        // // Convert displayed coordinates to original image coordinates 
-        // const originalWidth = 1024;
-        //  const originalHeight = 768; 
-         
-        //  const scaleX = originalWidth / rect.width; 
-        //  const scaleY = originalHeight / rect.height; 
-         
-        //  const originalX = clickX * scaleX;
-        //   const originalY = clickY * scaleY; 
-          
-        //   console.log("Original image coordinates:"); 
-        //   console.log("x:", originalX);
-        //    console.log("y:", originalY);
