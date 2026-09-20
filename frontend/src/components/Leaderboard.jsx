@@ -1,4 +1,4 @@
-function LeaderBoard({ scores }) {
+function Leaderboard({ scores }) {
   function formatTime(milliseconds) {
     const totalSeconds = Math.floor(milliseconds / 1000);
 
@@ -37,4 +37,4 @@ function LeaderBoard({ scores }) {
   );
 }
 
-export default LeaderBoard;
+export default Leaderboard;
