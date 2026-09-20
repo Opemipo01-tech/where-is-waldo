@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import GameImage from "./GameImage";
-import { startGame } from "../services/gameApi.js";
+import { startGame } from "../services/gameApi";
 
 function Game() {
   const [gameId, setGameId] = useState(null);
@@ -14,7 +14,10 @@ function Game() {
 
         console.log("Game started:", game);
       } catch (error) {
-        console.error("Failed to start game:", error);
+        console.error(
+          "Failed to start game:",
+          error
+        );
       }
     }
 

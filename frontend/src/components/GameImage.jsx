@@ -1,56 +1,79 @@
 import { useRef, useState } from "react";
 import beachImage from "../assets/waldo.png";
+
 import {
   submitGuess,
   completeGame,
+  createScore,
+  getScores,
 } from "../services/gameApi";
+
+import Leaderboard from "./LeaderBoard";
 
 function GameImage({ gameId }) {
   const imageRef = useRef(null);
 
   const [targetBox, setTargetBox] = useState(null);
-  const [foundCharacters, setFoundCharacters] = useState([]);
+
+  const [foundCharacters, setFoundCharacters] =
+    useState([]);
+
   const [markers, setMarkers] = useState([]);
+
   const [message, setMessage] = useState("");
-  const [submittingGuess, setSubmittingGuess] = useState(false);
-  const [gameComplete, setGameComplete] = useState(false);
-  const [completionTime, setCompletionTime] = useState(null);
+
+  const [submittingGuess, setSubmittingGuess] =
+    useState(false);
+
+  const [gameComplete, setGameComplete] =
+    useState(false);
+
+  const [completionTime, setCompletionTime] =
+    useState(null);
+
+  const [playerName, setPlayerName] =
+    useState("");
+
+  const [submittingScore, setSubmittingScore] =
+    useState(false);
+
+  const [scoreSubmitted, setScoreSubmitted] =
+    useState(false);
+
+  const [scores, setScores] = useState([]);
+
+  const [loadingScores, setLoadingScores] =
+    useState(false);
 
   const characters = ["Waldo", "Wizard", "Odlaw"];
 
   function handleImageClick(event) {
-    // Do not allow clicks after the game is complete
     if (gameComplete) {
       return;
     }
 
-    // Do not allow a new target while a guess is being submitted
     if (submittingGuess) {
       return;
     }
 
     const image = imageRef.current;
+
     const rect = image.getBoundingClientRect();
 
-    // Coordinates relative to the displayed image
     const clickX = event.clientX - rect.left;
     const clickY = event.clientY - rect.top;
 
-    // Original image dimensions
     const originalWidth = 1024;
     const originalHeight = 768;
 
-    // Convert displayed coordinates to original image coordinates
     const scaleX = originalWidth / rect.width;
     const scaleY = originalHeight / rect.height;
 
     const originalX = clickX * scaleX;
     const originalY = clickY * scaleY;
 
-    // Targeting box size
     const boxSize = 120;
 
-    // Keep targeting box inside the displayed image
     let boxX = clickX - boxSize / 2;
     let boxY = clickY - boxSize / 2;
 
@@ -79,10 +102,11 @@ function GameImage({ gameId }) {
       return;
     }
 
-    // Prevent selecting a character that has already been found
     if (foundCharacters.includes(character)) {
       setMessage(`${character} has already been found.`);
+
       setTargetBox(null);
+
       return;
     }
 
@@ -96,11 +120,9 @@ function GameImage({ gameId }) {
         targetBox.originalY
       );
 
-      // Remove targeting box
       setTargetBox(null);
 
       if (result.correct) {
-        // Add character to found characters
         setFoundCharacters((current) => {
           if (current.includes(character)) {
             return current;
@@ -109,10 +131,10 @@ function GameImage({ gameId }) {
           return [...current, character];
         });
 
-        // Add marker only if this character does not already have one
         setMarkers((current) => {
           const alreadyMarked = current.some(
-            (marker) => marker.character === character
+            (marker) =>
+              marker.character === character
           );
 
           if (alreadyMarked) {
@@ -129,17 +151,23 @@ function GameImage({ gameId }) {
           ];
         });
 
-        // Calculate what the new number of found characters will be
-        const newFoundCount = foundCharacters.length + 1;
+        const newFoundCount =
+          foundCharacters.length + 1;
 
         if (newFoundCount === characters.length) {
           try {
-            // Tell the backend that the game is complete
-            const completedGame = await completeGame(gameId);
+            const completedGame =
+              await completeGame(gameId);
 
             setGameComplete(true);
-            setCompletionTime(completedGame.time);
-            setMessage("✓ You found everyone!");
+
+            setCompletionTime(
+              completedGame.time
+            );
+
+            setMessage(
+              "✓ You found everyone!"
+            );
           } catch (error) {
             console.error(
               "Failed to complete game:",
@@ -151,10 +179,14 @@ function GameImage({ gameId }) {
             );
           }
         } else {
-          setMessage(`✓ ${character} found!`);
+          setMessage(
+            `✓ ${character} found!`
+          );
         }
       } else {
-        setMessage("✗ Wrong character/location");
+        setMessage(
+          "✗ Wrong character/location"
+        );
       }
     } catch (error) {
       console.error(
@@ -163,6 +195,7 @@ function GameImage({ gameId }) {
       );
 
       setTargetBox(null);
+
       setMessage(
         "Something went wrong. Please try again."
       );
@@ -171,12 +204,85 @@ function GameImage({ gameId }) {
     }
   }
 
+  function formatTime(milliseconds) {
+    const totalSeconds = Math.floor(
+      milliseconds / 1000
+    );
+
+    const minutes = Math.floor(
+      totalSeconds / 60
+    );
+
+    const seconds = totalSeconds % 60;
+
+    return `${String(minutes).padStart(
+      2,
+      "0"
+    )}:${String(seconds).padStart(2, "0")}`;
+  }
+
+  async function handleScoreSubmit(event) {
+    event.preventDefault();
+
+    const trimmedName = playerName.trim();
+
+    if (!trimmedName) {
+      setMessage("Please enter your name.");
+
+      return;
+    }
+
+    try {
+      setSubmittingScore(true);
+
+      await createScore(
+        trimmedName,
+        gameId
+      );
+
+      setScoreSubmitted(true);
+
+      setMessage("✓ Score saved!");
+
+      await loadScores();
+    } catch (error) {
+      console.error(
+        "Failed to save score:",
+        error
+      );
+
+      setMessage(
+        "Failed to save your score. Please try again."
+      );
+    } finally {
+      setSubmittingScore(false);
+    }
+  }
+
+  async function loadScores() {
+    try {
+      setLoadingScores(true);
+
+      const data = await getScores();
+
+      setScores(data);
+    } catch (error) {
+      console.error(
+        "Failed to load scores:",
+        error
+      );
+
+      setMessage(
+        "Score saved, but the leaderboard could not be loaded."
+      );
+    } finally {
+      setLoadingScores(false);
+    }
+  }
+
   return (
     <div className="image-container">
-
-      {/* Image area */}
       <div className="image-wrapper">
-
         <img
           ref={imageRef}
           src={beachImage}
@@ -185,20 +291,23 @@ function GameImage({ gameId }) {
           onClick={handleImageClick}
         />
 
-        {/* Successful guess markers */}
         {markers.map((marker) => (
           <div
             key={marker.character}
             className="correct-marker"
             style={{
-              left: `${(marker.originalX / 1024) * 100}%`,
-              top: `${(marker.originalY / 768) * 100}%`,
+              left: `${
+                (marker.originalX / 1024) * 100
+              }%`,
+
+              top: `${
+                (marker.originalY / 768) * 100
+              }%`,
             }}
             title={`${marker.character} found`}
           />
         ))}
 
-        {/* Targeting box */}
         {targetBox && (
           <div
             className="target-box"
@@ -211,7 +320,9 @@ function GameImage({ gameId }) {
               <button
                 key={character}
                 onClick={() =>
-                  handleCharacterSelect(character)
+                  handleCharacterSelect(
+                    character
+                  )
                 }
                 disabled={submittingGuess}
               >
@@ -222,22 +333,19 @@ function GameImage({ gameId }) {
         )}
       </div>
 
-      {/* Game message */}
       {message && (
         <p className="game-message">
           {message}
         </p>
       )}
 
-      {/* Found characters */}
       <div className="found-characters">
         <p>
-          Found: {foundCharacters.length} /{" "}
+          Found: {foundCharacters.length}/
           {characters.length}
         </p>
       </div>
 
-      {/* Completion information */}
       {gameComplete && (
         <div className="game-complete">
           <h2>Game Complete!</h2>
@@ -245,8 +353,60 @@ function GameImage({ gameId }) {
           {completionTime !== null && (
             <p>
               Your time:{" "}
-              {(completionTime / 1000).toFixed(2)} seconds
+              <strong>
+                {formatTime(completionTime)}
+              </strong>
             </p>
+          )}
+
+          {!scoreSubmitted && (
+            <form
+              className="score-form"
+              onSubmit={handleScoreSubmit}
+            >
+              <label htmlFor="player-name">
+                Enter your name
+              </label>
+
+              <input
+                id="player-name"
+                type="text"
+                value={playerName}
+                onChange={(event) =>
+                  setPlayerName(
+                    event.target.value
+                  )
+                }
+                placeholder="Your name"
+                maxLength={30}
+                disabled={submittingScore}
+              />
+
+              <button
+                type="submit"
+                disabled={submittingScore}
+              >
+                {submittingScore
+                  ? "Saving..."
+                  : "Save Score"}
+              </button>
+            </form>
+          )}
+
+          {scoreSubmitted && (
+            <div className="score-saved">
+              <p>
+                Your score has been saved!
+              </p>
+
+              {loadingScores ? (
+                <p>Loading leaderboard...</p>
+              ) : (
+                <Leaderboard
+                  scores={scores}
+                />
+              )}
+            </div>
           )}
         </div>
       )}
