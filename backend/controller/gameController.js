@@ -20,6 +20,7 @@ export async function createGame(req, res) {
 }
 
 export async function submitGuess(req, res) {
+    
   try {
     const { id } = req.params;
     const { character, x, y } = req.body;
@@ -36,12 +37,32 @@ export async function submitGuess(req, res) {
       });
     }
 
-    const distance = Math.sqrt(
-      Math.pow(x - foundCharacter.x, 2) +
-      Math.pow(y - foundCharacter.y, 2)
-    );
 
-    const correct = distance <= foundCharacter.tolerance;
+console.log("Character:", foundCharacter.name);
+console.log("Stored coordinates:", {
+  x: foundCharacter.x,
+  y: foundCharacter.y,
+});
+
+console.log("Player click:", {
+  x,
+  y,
+});
+
+console.log("Tolerance:", foundCharacter.tolerance);
+
+const distance = Math.sqrt(
+  Math.pow(x - foundCharacter.x, 2) +
+  Math.pow(y - foundCharacter.y, 2)
+);
+
+console.log("Distance:", distance);
+
+const correct = distance <= foundCharacter.tolerance;
+
+console.log("Correct:", correct);
+
+
 
     res.status(200).json({
       correct,
