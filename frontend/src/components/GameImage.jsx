@@ -4,7 +4,7 @@ import waldoHeadshot from "../assets/waldoImg.png";
 import wizardHeadshot from "../assets/Headshot_-_Wizard.webp";
 import odlawHeadshot from "../assets/Headshot_-_Odlaw.webp";
 import { submitGuess, completeGame, createScore, getScores } from "../services/gameApi";
-import LeaderBoard from "./LeaderBoard.jsx";
+import LeaderBoard from "./LeaderBoard";
 
 const characters = [{ name: "Waldo", image: waldoHeadshot }, { name: "Wizard", image: wizardHeadshot }, { name: "Odlaw", image: odlawHeadshot }];
 const W = 1024, H = 768;
