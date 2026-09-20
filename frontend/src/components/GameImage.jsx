@@ -1,417 +1,56 @@
-import { useRef, useState } from "react";
+﻿import { useEffect, useRef, useState } from "react";
 import beachImage from "../assets/waldo.png";
-
-import {
-  submitGuess,
-  completeGame,
-  createScore,
-  getScores,
-} from "../services/gameApi";
-
+import waldoHeadshot from "../assets/waldoImg.png";
+import wizardHeadshot from "../assets/Headshot_-_Wizard.webp";
+import odlawHeadshot from "../assets/Headshot_-_Odlaw.webp";
+import { submitGuess, completeGame, createScore, getScores } from "../services/gameApi";
 import Leaderboard from "./LeaderBoard";
 
-function GameImage({ gameId }) {
+const characters = [{ name: "Waldo", image: waldoHeadshot }, { name: "Wizard", image: wizardHeadshot }, { name: "Odlaw", image: odlawHeadshot }];
+const W = 1024, H = 768;
+
+function GameImage({ gameId, onPlayAgain }) {
   const imageRef = useRef(null);
-
-  const [targetBox, setTargetBox] = useState(null);
-
-  const [foundCharacters, setFoundCharacters] =
-    useState([]);
-
-  const [markers, setMarkers] = useState([]);
-
-  const [message, setMessage] = useState("");
-
-  const [submittingGuess, setSubmittingGuess] =
-    useState(false);
-
-  const [gameComplete, setGameComplete] =
-    useState(false);
-
-  const [completionTime, setCompletionTime] =
-    useState(null);
-
-  const [playerName, setPlayerName] =
-    useState("");
-
-  const [submittingScore, setSubmittingScore] =
-    useState(false);
-
-  const [scoreSubmitted, setScoreSubmitted] =
-    useState(false);
-
-  const [scores, setScores] = useState([]);
-
-  const [loadingScores, setLoadingScores] =
-    useState(false);
-
-  const characters = ["Waldo", "Wizard", "Odlaw"];
+  const [target, setTarget] = useState(null), [found, setFound] = useState([]), [markers, setMarkers] = useState([]);
+  const [message, setMessage] = useState(null), [checking, setChecking] = useState(false), [complete, setComplete] = useState(false), [time, setTime] = useState(null);
+  const [name, setName] = useState(""), [saving, setSaving] = useState(false), [saved, setSaved] = useState(false), [scores, setScores] = useState([]), [loadingScores, setLoadingScores] = useState(false);
+  const say = (text, type = "info") => setMessage({ text, type });
+  const formatTime = (ms) => { const seconds = Math.floor(ms / 1000); return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`; };
+  useEffect(() => {
+    async function loadLeaderboard() {
+      try { setLoadingScores(true); setScores(await getScores()); }
+      catch { say("The leaderboard couldn't be loaded right now.", "error"); }
+      finally { setLoadingScores(false); }
+    }
+    loadLeaderboard();
+  }, []);
 
   function handleImageClick(event) {
-    if (gameComplete) {
-      return;
-    }
-
-    if (submittingGuess) {
-      return;
-    }
-
-    const image = imageRef.current;
-
-    const rect = image.getBoundingClientRect();
-
-    const clickX = event.clientX - rect.left;
-    const clickY = event.clientY - rect.top;
-
-    const originalWidth = 1024;
-    const originalHeight = 768;
-
-    const scaleX = originalWidth / rect.width;
-    const scaleY = originalHeight / rect.height;
-
-    const originalX = clickX * scaleX;
-    const originalY = clickY * scaleY;
-
-    const boxSize = 120;
-
-    let boxX = clickX - boxSize / 2;
-    let boxY = clickY - boxSize / 2;
-
-    boxX = Math.max(
-      0,
-      Math.min(boxX, rect.width - boxSize)
-    );
-
-    boxY = Math.max(
-      0,
-      Math.min(boxY, rect.height - boxSize)
-    );
-
-    setTargetBox({
-      x: boxX,
-      y: boxY,
-      originalX,
-      originalY,
-    });
-
-    setMessage("");
+    if (complete || checking) return;
+    const rect = imageRef.current.getBoundingClientRect(), x = event.clientX - rect.left, y = event.clientY - rect.top, size = Math.min(154, rect.width * .42);
+    setTarget({ x: Math.max(0, Math.min(x - size / 2, rect.width - size)), y: Math.max(0, Math.min(y - size / 2, rect.height - size)), originalX: x * W / rect.width, originalY: y * H / rect.height });
+    setMessage(null);
   }
-
   async function handleCharacterSelect(character) {
-    if (!targetBox || submittingGuess || gameComplete) {
-      return;
-    }
-
-    if (foundCharacters.includes(character)) {
-      setMessage(`${character} has already been found.`);
-
-      setTargetBox(null);
-
-      return;
-    }
-
+    if (!target || checking || complete || found.includes(character)) return;
+    const click = target;
     try {
-      setSubmittingGuess(true);
-
-      const result = await submitGuess(
-        gameId,
-        character,
-        targetBox.originalX,
-        targetBox.originalY
-      );
-
-      setTargetBox(null);
-
-      if (result.correct) {
-        setFoundCharacters((current) => {
-          if (current.includes(character)) {
-            return current;
-          }
-
-          return [...current, character];
-        });
-
-        setMarkers((current) => {
-          const alreadyMarked = current.some(
-            (marker) =>
-              marker.character === character
-          );
-
-          if (alreadyMarked) {
-            return current;
-          }
-
-          return [
-            ...current,
-            {
-              character,
-              originalX: targetBox.originalX,
-              originalY: targetBox.originalY,
-            },
-          ];
-        });
-
-        const newFoundCount =
-          foundCharacters.length + 1;
-
-        if (newFoundCount === characters.length) {
-          try {
-            const completedGame =
-              await completeGame(gameId);
-
-            setGameComplete(true);
-
-            setCompletionTime(
-              completedGame.time
-            );
-
-            setMessage(
-              "✓ You found everyone!"
-            );
-          } catch (error) {
-            console.error(
-              "Failed to complete game:",
-              error
-            );
-
-            setMessage(
-              "All characters found, but we couldn't complete the game."
-            );
-          }
-        } else {
-          setMessage(
-            `✓ ${character} found!`
-          );
-        }
-      } else {
-        setMessage(
-          "✗ Wrong character/location"
-        );
-      }
-    } catch (error) {
-      console.error(
-        "Failed to submit guess:",
-        error
-      );
-
-      setTargetBox(null);
-
-      setMessage(
-        "Something went wrong. Please try again."
-      );
-    } finally {
-      setSubmittingGuess(false);
-    }
+      setChecking(true); const result = await submitGuess(gameId, character, click.originalX, click.originalY); setTarget(null);
+      if (!result.correct) return say("Not quite — keep searching.", "error");
+      const nextFound = [...found, character]; setFound(nextFound); setMarkers((current) => [...current, { character, originalX: click.originalX, originalY: click.originalY }]);
+      if (nextFound.length !== characters.length) return say(`${character} found!`, "success");
+      const game = await completeGame(gameId); setComplete(true); setTime(game.time); say("You found everyone!", "success");
+    } catch { setTarget(null); say("Your guess couldn't be checked. Please try again.", "error"); }
+    finally { setChecking(false); }
   }
-
-  function formatTime(milliseconds) {
-    const totalSeconds = Math.floor(
-      milliseconds / 1000
-    );
-
-    const minutes = Math.floor(
-      totalSeconds / 60
-    );
-
-    const seconds = totalSeconds % 60;
-
-    return `${String(minutes).padStart(
-      2,
-      "0"
-    )}:${String(seconds).padStart(2, "0")}`;
-  }
-
   async function handleScoreSubmit(event) {
-    event.preventDefault();
-
-    const trimmedName = playerName.trim();
-
-    if (!trimmedName) {
-      setMessage("Please enter your name.");
-
-      return;
-    }
-
-    try {
-      setSubmittingScore(true);
-
-      await createScore(
-        trimmedName,
-        gameId
-      );
-
-      setScoreSubmitted(true);
-
-      setMessage("✓ Score saved!");
-
-      await loadScores();
-    } catch (error) {
-      console.error(
-        "Failed to save score:",
-        error
-      );
-
-      setMessage(
-        "Failed to save your score. Please try again."
-      );
-    } finally {
-      setSubmittingScore(false);
-    }
+    event.preventDefault(); const player = name.trim(); if (!player) return say("Please enter a name before saving.", "error");
+    try { setSaving(true); await createScore(player, gameId); setSaved(true); say("Score saved!", "success"); setLoadingScores(true); setScores(await getScores()); }
+    catch { say("We couldn't save your score or load the leaderboard. Please try again.", "error"); }
+    finally { setSaving(false); setLoadingScores(false); }
   }
-
-  async function loadScores() {
-    try {
-      setLoadingScores(true);
-
-      const data = await getScores();
-
-      setScores(data);
-    } catch (error) {
-      console.error(
-        "Failed to load scores:",
-        error
-      );
-
-      setMessage(
-        "Score saved, but the leaderboard could not be loaded."
-      );
-    } finally {
-      setLoadingScores(false);
-    }
-  }
-
-  return (
-    <div className="image-container">
-      <div className="image-wrapper">
-        <img
-          ref={imageRef}
-          src={beachImage}
-          alt="Where's Waldo game"
-          className="game-image"
-          onClick={handleImageClick}
-        />
-
-        {markers.map((marker) => (
-          <div
-            key={marker.character}
-            className="correct-marker"
-            style={{
-              left: `${
-                (marker.originalX / 1024) * 100
-              }%`,
-
-              top: `${
-                (marker.originalY / 768) * 100
-              }%`,
-            }}
-            title={`${marker.character} found`}
-          />
-        ))}
-
-        {targetBox && (
-          <div
-            className="target-box"
-            style={{
-              left: `${targetBox.x}px`,
-              top: `${targetBox.y}px`,
-            }}
-          >
-            {characters.map((character) => (
-              <button
-                key={character}
-                onClick={() =>
-                  handleCharacterSelect(
-                    character
-                  )
-                }
-                disabled={submittingGuess}
-              >
-                {character}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {message && (
-        <p className="game-message">
-          {message}
-        </p>
-      )}
-
-      <div className="found-characters">
-        <p>
-          Found: {foundCharacters.length}/
-          {characters.length}
-        </p>
-      </div>
-
-      {gameComplete && (
-        <div className="game-complete">
-          <h2>Game Complete!</h2>
-
-          {completionTime !== null && (
-            <p>
-              Your time:{" "}
-              <strong>
-                {formatTime(completionTime)}
-              </strong>
-            </p>
-          )}
-
-          {!scoreSubmitted && (
-            <form
-              className="score-form"
-              onSubmit={handleScoreSubmit}
-            >
-              <label htmlFor="player-name">
-                Enter your name
-              </label>
-
-              <input
-                id="player-name"
-                type="text"
-                value={playerName}
-                onChange={(event) =>
-                  setPlayerName(
-                    event.target.value
-                  )
-                }
-                placeholder="Your name"
-                maxLength={30}
-                disabled={submittingScore}
-              />
-
-              <button
-                type="submit"
-                disabled={submittingScore}
-              >
-                {submittingScore
-                  ? "Saving..."
-                  : "Save Score"}
-              </button>
-            </form>
-          )}
-
-          {scoreSubmitted && (
-            <div className="score-saved">
-              <p>
-                Your score has been saved!
-              </p>
-
-              {loadingScores ? (
-                <p>Loading leaderboard...</p>
-              ) : (
-                <Leaderboard
-                  scores={scores}
-                />
-              )}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
+  return <section className="game"><header className="game-header"><div><p className="eyebrow">The search is on</p><h1>Where&apos;s Waldo?</h1></div><b className="progress-pill">{found.length} / {characters.length} found</b></header><div className="character-roster">{characters.map(({ name: person, image }) => { const isFound = found.includes(person); return <div className={`character-card ${isFound ? "is-found" : ""}`} key={person}><span className="headshot-wrap"><img src={image} alt="" className="headshot" />{isFound && <i className="found-check">✓</i>}</span><b>{person}</b><small>{isFound ? "Found" : "Find me"}</small></div>; })}</div><p className="instruction">Click the illustration, then select the character at that spot.</p><div className="image-container"><div className="image-wrapper"><img ref={imageRef} src={beachImage} alt="Busy beach illustration with Waldo, Wizard and Odlaw" className="game-image" onClick={handleImageClick} />{markers.map((marker) => <span className="correct-marker" key={marker.character} style={{ left: `${marker.originalX / W * 100}%`, top: `${marker.originalY / H * 100}%` }} />)}{target && <div className="target-box" style={{ left: target.x, top: target.y }}><small>Who is this?</small>{characters.map(({ name: person }) => <button key={person} onClick={() => handleCharacterSelect(person)} disabled={checking || found.includes(person)}>{found.includes(person) ? `✓ ${person}` : person}</button>)}<button className="cancel-button" onClick={() => setTarget(null)} disabled={checking}>Cancel</button></div>}</div></div>{checking && <p className="loading-message">Checking your guess...</p>}{message && <p className={`notice notice-${message.type}`} role={message.type === "error" ? "alert" : "status"}>{message.type === "success" && "✓ "}{message.text}</p>}{complete && <section className="game-complete"><p className="eyebrow">Search complete</p><h2>You found the whole crew.</h2>{time !== null && <p>Your time <strong>{formatTime(time)}</strong></p>}{!saved ? <form className="score-form" onSubmit={handleScoreSubmit}><label htmlFor="name">Add your name to the leaderboard</label><div><input id="name" value={name} maxLength="30" placeholder="Your name" onChange={(event) => setName(event.target.value)} disabled={saving} /><button className="primary-button" disabled={saving}>{saving ? "Saving..." : "Save score"}</button></div></form> : <p className="notice notice-success">Your score has been saved.</p>}<button className="secondary-button" onClick={onPlayAgain}>Play again</button></section>}<section className="leaderboard-panel">{loadingScores ? <p className="loading-message">Loading leaderboard...</p> : <Leaderboard scores={scores} />}</section></section>;
 }
-
 export default GameImage;
+
+
